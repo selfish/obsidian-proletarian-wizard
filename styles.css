@@ -66,10 +66,17 @@
 }
 
 .pw-planning-column {
-    width: 260px;
+    min-width: 260px;
     margin: 5px;
-    display: inline-block;
+    display: flex;
+    flex-direction: column;
     height: 260px;
+}
+
+.pw-planning-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
 }
 
 .pw-planning-column-title { 
@@ -111,7 +118,7 @@
 }
 
 .pw-planning-column--today {
-    width: 30%;
+    flex: 1;
 }
 
 .pw-planning-column--today:nth-of-type(1) {

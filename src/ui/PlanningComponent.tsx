@@ -216,72 +216,85 @@ export function PlanningComponent({deps, settings, app}: PlanningComponentProps)
       removeDate());
 
     const today = DateTime.now().startOf("day")
-		yield todoColumn(
+                yield todoColumn(
       "🕸️",
       "Past",
       getTodosByDate(null, today).filter(
         todo => todo.status !== TodoStatus.Canceled && todo.status !== TodoStatus.Complete),
       true);
-      
-    let bracketStart = today;
-    let bracketEnd = today.plus({ day: 1 });
 
+    const firstWeekday = settings.firstWeekday ?? 1
+
+    // Daily brackets
+    let dayStart = today.plus({ day: 1 })
     for (let i = 0; i < 6; i++) {
-      bracketStart = bracketEnd
-      bracketEnd = bracketEnd.plus({ day: 1 })
-			const firstWeekday = settings.firstWeekday ?? 1
-			const localDay = ((bracketStart.weekday - firstWeekday + 7) % 7) + 1
+      const dayEnd = dayStart.plus({ day: 1 })
+      const localDay = ((dayStart.weekday - firstWeekday + 7) % 7) + 1
       if (!settings.showWeekEnds && localDay >= 6) {
+        dayStart = dayEnd
         continue
       }
-      const label = i === 0 ? "Tomorrow" : bracketStart.toFormat("cccc dd/MM")
-      const todos = getTodosByDate(bracketStart, bracketEnd);
-      const style = getWipStyle(todos);
+      const label = i === 0 ? "Tomorrow" : dayStart.toFormat("cccc dd/MM")
+      const todos = getTodosByDate(dayStart, dayEnd)
+      const style = getWipStyle(todos)
       yield todoColumn(
         "📅",
         label,
         todos,
         hideEmpty,
-        moveToDate(bracketStart),
-        style);
+        moveToDate(dayStart),
+        style)
+      dayStart = dayEnd
     }
 
-    for (let i = 1; i < 5; i++) {
-      bracketStart = bracketEnd
-      bracketEnd = bracketStart.plus({ weeks: 1 })
-      const label = `Week +${i} (${bracketStart.toFormat("dd/MM")} - ${bracketEnd.minus({ days: 1 }).toFormat("dd/MM")})`;
-      const todos = getTodosByDate(bracketStart, bracketEnd)
-      const style = getWipStyle(todos);
+    // Weekly brackets starting on the first weekday
+    let startOfThisWeek = today.set({ weekday: firstWeekday })
+    if (startOfThisWeek > today) {
+      startOfThisWeek = startOfThisWeek.minus({ weeks: 1 })
+    }
+    let weekStart = startOfThisWeek.plus({ weeks: 1 })
+    for (let i = 0; i < 4; i++) {
+      const weekEnd = weekStart.plus({ weeks: 1 })
+      const label = i === 0
+        ? "Next week"
+        : `Week +${i + 1} (${weekStart.toFormat("dd/MM")} - ${weekEnd.minus({ days: 1 }).toFormat("dd/MM")})`
+      const todos = getTodosByDate(weekStart, weekEnd)
+      const style = getWipStyle(todos)
       yield todoColumn(
         "📅",
         label,
         todos,
         hideEmpty,
-        moveToDate(bracketStart),
-        style);
+        moveToDate(weekStart),
+        style)
+      weekStart = weekEnd
     }
 
-    for (let i = 1; i < 4; i++) {
-      bracketStart = bracketEnd
-      bracketEnd = bracketStart.plus({ months: 1 })
-      const label = `Month +${i} (${bracketStart.toFormat("dd/MM")} - ${bracketEnd.minus({ days: 1 }).toFormat("dd/MM")})`
-      const todos = getTodosByDate(bracketStart, bracketEnd);
-      const style = getWipStyle(todos);
+    // Monthly brackets starting on the first day of each month
+    let monthStart = today.startOf("month").plus({ months: 1 })
+    for (let i = 0; i < 3; i++) {
+      const monthEnd = monthStart.plus({ months: 1 })
+      const label = i === 0
+        ? "Next month"
+        : `Month +${i + 1} (${monthStart.toFormat("dd/MM")} - ${monthEnd.minus({ days: 1 }).toFormat("dd/MM")})`
+      const todos = getTodosByDate(monthStart, monthEnd)
+      const style = getWipStyle(todos)
       yield todoColumn(
         "📅",
         label,
         todos,
         hideEmpty,
-        moveToDate(bracketStart),
-        style);
+        moveToDate(monthStart),
+        style)
+      monthStart = monthEnd
     }
 
     yield todoColumn(
       "📅",
       "Later",
-      getTodosByDate(bracketStart, null),
+      getTodosByDate(monthStart, null),
       hideEmpty,
-      moveToDate(bracketStart));
+      moveToDate(monthStart));
   }
 
   deps.logger.debug(`Rendering planning view`)
@@ -291,7 +304,7 @@ export function PlanningComponent({deps, settings, app}: PlanningComponentProps)
       <h1><span className="pw-planning-today-icon">☀️</span> Today</h1>
       {Array.from(getTodayColumns())}
     </div>
-    <div>
+    <div className="pw-planning-columns">
       {Array.from(getColumns())}
     </div>
     <PlanningSettingsComponent
